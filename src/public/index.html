@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <h1>S3-Drive</h1>
+  <h2>Upload</h2>
+  <input type="file" name="file" id="file"/>
+  <button onclick="onUpload()">submit</button>
+  <h2>Files</h2>
+  <div id="fileView">
+    <ul id="folders"></ul>
+    <ul id="files"></ul>
+  </div>
+  <script>
+    const onUpload = () => {
+      const input = document.getElementById('file')
+      let data = new FormData()
+      data.append('uploadFile', input.files[0])
+      data.append('path', '/')
+      console.log("hi")
+      console.log(data)
+      fetch('/explore/file', {
+        method: 'POST',
+        body: data
+      })
+    }
+
+    let pathStack = []
+    const generateOnMove = (foldername) => {
+      return () => {
+        pathStack.push(foldername.replace(/\//, ''))
+        updateFileView()
+      }
+    }
+
+    const updateFileView = () => {
+      const fileView = document.getElementById('files')
+      const folderView = document.getElementById('folders')
+      const realPath = pathStack.length === 0 ? '/' : pathStack.join('/')
+      const url = `/explore/dir/${realPath}`
+      fetch(url).then(res => res.json()).then(res => {
+        folderView.innerHTML = ''
+        fileView.innerHTML = ''
+        if(pathStack.length !== 0) {
+          const moveUpList = document.createElement('li')
+          const moveUpAnchor = document.createElement('a')
+          moveUpAnchor.setAttribute('href', '#')
+          moveUpAnchor.innerText = '..'
+          moveUpAnchor.onclick = () => {
+            console.log('hi')
+            pathStack.splice(pathStack.length-1)
+            updateFileView()
+          }
+          moveUpList.appendChild(moveUpAnchor)
+          folderView.appendChild(moveUpList)
+        }
+        res.folders.forEach(folderData => {
+          const folderList = document.createElement('li')
+          const folderAnchor = document.createElement('a')
+          folderAnchor.onclick = generateOnMove(folderData)
+          folderAnchor.setAttribute('href', '#')
+          folderAnchor.innerText = folderData
+          folderList.appendChild(folderAnchor)
+          folderView.appendChild(folderList)
+        })
+        res.files.forEach(fileData => {
+          const fileList = document.createElement('li')
+          const fileAnchor = document.createElement('a')
+          fileAnchor.setAttribute('href', ['explore', 'file', ...pathStack, fileData.name].join('/'))
+          fileAnchor.innerText = fileData.name
+          fileList.appendChild(fileAnchor)
+          fileView.appendChild(fileList)
+        })
+      })
+    }
+    const updatePath = (newPath) => {
+      pathStack = ['/', ...newPath.split('/')]
+      updateFileView()
+    }
+
+    updateFileView()
+  </script>
+</body>
+</html>
